@@ -16,6 +16,20 @@ This project provides a Streamlit-based chat interface integrated with Azure Ope
 - Azure subscription with access to Azure OpenAI services.
 - Azure CLI installed ([Azure CLI](https://docs.microsoft.com/cli/azure/install-azure-cli)).
 
+## Initial Azure Setup
+
+1. **Log in to Azure CLI**:
+
+```bash
+az login
+```
+
+2. **Create a resource group**:
+
+```bash
+az group create --name <your-resource-group> --location <your-location>
+```
+
 ## Environment Variables
 
 Ensure you have the following environment variables set:
@@ -45,108 +59,54 @@ Open your browser and navigate to:
 http://localhost:8501
 ```
 
-## Pushing to Container Registries
+## Container Registry Setup and Deployment
 
-### Pushing to DockerHub
+You can push the image to either Docker Hub or Azure Container Registry (ACR). Choose the option that best suits your needs.
 
-1. **Log in to DockerHub**:
+### Option 1: Using Docker Hub
+
+1. **Log in and push to DockerHub**:
 
 ```bash
 docker login
-```
-
-2. **Tag your image with your DockerHub username**:
-
-```bash
 docker tag azure-ai-chat-app <your-dockerhub-username>/azure-ai-chat-app:latest
-```
-
-3. **Push the image to DockerHub**:
-
-```bash
 docker push <your-dockerhub-username>/azure-ai-chat-app:latest
 ```
 
-### Pushing to Azure Container Registry (ACR)
+### Option 2: Using Azure Container Registry (ACR)
 
-1. **Create a resource group (if not already created)**:
-
-```bash
-az group create --name <your-resource-group> --location <your-location>
-```
-
-2. **Create an Azure Container Registry (if not already created)**:
+1. **Create and set up ACR**:
 
 ```bash
 az acr create --resource-group <your-resource-group> --name <your-acr-name> --sku Basic
-```
-
-3. **Log in to your ACR**:
-
-```bash
 az acr login --name <your-acr-name>
 ```
 
-4. **Tag your image with the ACR login server name**:
+2. **Push to ACR**:
 
 ```bash
 docker tag azure-ai-chat-app <your-acr-name>.azurecr.io/azure-ai-chat-app:latest
-```
-
-5. **Push the image to ACR**:
-
-```bash
 docker push <your-acr-name>.azurecr.io/azure-ai-chat-app:latest
-```
-
-6. **Use the ACR image in your deployment**:
-
-When deploying to ACI using the Bicep template, use the full image path:
-
-```bash
-az deployment group create \
-  --resource-group <your-resource-group> \
-  --template-file infra/aci.bicep \
-  --parameters image="<your-acr-name>.azurecr.io/azure-ai-chat-app:latest" azureOpenAIEndpoint="<your-endpoint>" azureOpenAIAPIKey="<your-api-key>"
-```
-
-> Note: If your ACR has private access, you'll need to provide credentials for ACI to pull the image. Add the following parameters to your deployment command:
-
-```bash
---parameters registryServer="<your-acr-name>.azurecr.io" registryUsername="<registry-username>" registryPassword="<registry-password>"
-```
-
-You can get the credentials using:
-```bash
-az acr credential show --name <your-acr-name>
 ```
 
 ## Deploying to Azure Container Instances (ACI)
 
-1. **Log in to Azure CLI**:
-
-```bash
-az login
-```
-
-2. **Create a resource group (if not already created)**:
-
-```bash
-az group create --name <your-resource-group> --location <your-location>
-```
-
-3. **Deploy using Bicep template** (`infra/aci.bicep`):
+Deploy using the Bicep template (`infra/aci.bicep`):
 
 ```bash
 az deployment group create \
   --resource-group <your-resource-group> \
   --template-file infra/aci.bicep \
-  --parameters image="<your-docker-image>" azureOpenAIEndpoint="<your-endpoint>" azureOpenAIAPIKey="<your-api-key>"
+  --parameters image="<your-image-path>" \
+               azureOpenAIEndpoint="<your-endpoint>" \
+               azureOpenAIAPIKey="<your-api-key>"
 ```
 
-Replace placeholders (`<your-resource-group>`, `<your-location>`, `<your-docker-image>`, `<your-endpoint>`, `<your-api-key>`) with your actual values.
+Replace `<your-image-path>` with either:
+- DockerHub: `<your-dockerhub-username>/azure-ai-chat-app:latest`
+- ACR: `<your-acr-name>.azurecr.io/azure-ai-chat-app:latest`
 
-If using an image from a private ACR, add registry credentials to your deployment:
+If using ACR with private access, add registry credentials:
 
 ```bash
 az deployment group create \
@@ -160,13 +120,45 @@ az deployment group create \
                registryPassword="<registry-password>"
 ```
 
-4. **Access the deployed application**:
+You can get ACR credentials using:
+```bash
+az acr credential show --name <your-acr-name>
+```
 
-After deployment, the fully qualified domain name (FQDN) will be displayed. Access your application at:
-
+Once deployed, access your application at:
 ```
 http://<your-container-group-name>.<region>.azurecontainer.io:8501
 ```
+
+## GitHub Actions CI/CD
+
+This repository includes GitHub Actions workflow for automated container builds and deployments. The workflow:
+- Triggers only on pushes to the main branch
+- Builds the Docker image
+- Pushes to either Docker Hub or Azure Container Registry (or both if configured)
+
+### Required GitHub Secrets
+
+Set up the following secrets in your GitHub repository settings:
+
+For Docker Hub:
+- `DOCKER_USERNAME`: Your Docker Hub username
+- `DOCKER_PASSWORD`: Your Docker Hub access token
+
+For Azure Container Registry:
+- `AZURE_REGISTRY_URL`: Your ACR login server (e.g., `myregistry.azurecr.io`)
+- `AZURE_REGISTRY_USERNAME`: ACR username
+- `AZURE_REGISTRY_PASSWORD`: ACR password
+
+### Branch Protection
+
+To ensure only authorized changes reach the main branch:
+1. Go to Repository Settings > Branches
+2. Add branch protection rule for `main`
+3. Enable:
+   - Require pull request reviews
+   - Require status checks to pass
+   - Restrict who can push to matching branches
 
 ## Original Prompts
 > Create a Python web app using Streamlit that allows me to call an Azure AI Foundry Endpoint to chat with. I want the user to be able to select a model (listed in a parameter in the app to make sure the developer has a choice which models are allowed). Provide the ability to upload a text file, PDF or image for context in the chat. The endpoint and API key should be configurable using an environment variable but also provide an input option in the web app itself so it can be changed at runtime.

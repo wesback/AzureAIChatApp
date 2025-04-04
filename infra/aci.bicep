@@ -37,15 +37,26 @@ resource containerGroup 'Microsoft.ContainerInstance/containerGroups@2023-05-01'
         name: containerGroupName
         properties: {
           image: image
-          ports: [{ port: 8501 }]
+          ports: [
+            {
+              port: 8501
+              protocol: 'TCP'
+            }
+          ]
           environmentVariables: [
-            { name: 'AZURE_OPENAI_ENDPOINT', value: azureOpenAIEndpoint }
-            { name: 'AZURE_OPENAI_API_KEY', value: azureOpenAIAPIKey }
+            {
+              name: 'AZURE_OPENAI_ENDPOINT'
+              value: azureOpenAIEndpoint
+            }
+            {
+              name: 'AZURE_OPENAI_API_KEY'
+              value: azureOpenAIAPIKey
+            }
           ]
           resources: {
             requests: {
               cpu: 1
-              memoryInGb: 1.5
+              memoryInGB: 1.5
             }
           }
         }
@@ -54,7 +65,12 @@ resource containerGroup 'Microsoft.ContainerInstance/containerGroups@2023-05-01'
     osType: 'Linux'
     ipAddress: {
       type: 'Public'
-      ports: [{ protocol: 'Tcp', port: 8501 }]
+      ports: [
+        {
+          port: 8501
+          protocol: 'TCP'
+        }
+      ]
       dnsNameLabel: containerGroupName
     }
   }
