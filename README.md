@@ -4,6 +4,8 @@
 
 This project provides a Streamlit-based chat interface integrated with Azure OpenAI services. It allows users to interact with various Azure AI models, upload context files (text, PDF, images), and receive AI-generated responses.
 
+I still need to add a way to host the application over HTTPS.
+
 ## Features
 
 - Interactive chat interface powered by Streamlit.
@@ -87,36 +89,23 @@ docker push <your-acr-name>.azurecr.io/azureaichatapp:latest
 
 ## Deploying to Azure Container Instances (ACI)
 
-Deploy using the Bicep template (`infra/aci.bicep`):
-
 ```bash
 az deployment group create \
   --resource-group <your-resource-group> \
   --template-file infra/aci.bicep \
-  --parameters image="<your-image-path>" \
+  --parameters containerGroupName="azure-ai-chat-app" \
+               image="<your-image-path>" \
                azureOpenAIEndpoint="<your-endpoint>" \
                azureOpenAIAPIKey="<your-api-key>" \
-               registryType="<DockerHub|ACR>" \
-               registryName="<your-acr-name>"
+               registryType="DockerHub"
 ```
 
 Replace `<your-image-path>` with either:
 - DockerHub: `<your-dockerhub-username>/azureaichatapp:latest`
 - ACR: `<your-acr-name>.azurecr.io/azureaichatapp:latest`
 
-Set `registryType` to:
-- `DockerHub` for images hosted on Docker Hub.
-- `ACR` for images hosted on Azure Container Registry.
-
-If using ACR with private access, add registry credentials:
-
+If using Azure Container Registry (ACR), add these additional parameters:
 ```bash
-az deployment group create \
-  --resource-group <your-resource-group> \
-  --template-file infra/aci.bicep \
-  --parameters image="<your-acr-name>.azurecr.io/azureaichatapp:latest" \
-               azureOpenAIEndpoint="<your-endpoint>" \
-               azureOpenAIAPIKey="<your-api-key>" \
                registryType="ACR" \
                registryName="<your-acr-name>" \
                registryUsername="<registry-username>" \
@@ -128,38 +117,9 @@ You can get ACR credentials using:
 az acr credential show --name <your-acr-name>
 ```
 
-### Using Azure Application Gateway for SSL Termination
-
-To enable secure communication over HTTPS, this solution integrates with Azure Application Gateway. The Application Gateway handles SSL termination and proxies traffic to the Azure Container Instance (ACI) running on port 8501.
-
-#### Steps to Configure Azure Application Gateway
-
-1. **Update Parameters**:
-   - Add the following parameters to your deployment command:
-     - `applicationGatewayName`: The name of the Azure Application Gateway resource.
-     - `publicIpName`: The name of the public IP resource for the Application Gateway.
-
-2. **Deploy with Application Gateway**:
-   ```bash
-   az deployment group create \
-     --resource-group <your-resource-group> \
-     --template-file infra/aci.bicep \
-     --parameters image="<your-image-path>" \
-                  azureOpenAIEndpoint="<your-endpoint>" \
-                  azureOpenAIAPIKey="<your-api-key>" \
-                  registryType="<DockerHub|ACR>" \
-                  registryName="<your-acr-name>" \
-                  applicationGatewayName="<your-app-gateway-name>" \
-                  publicIpName="<your-public-ip-name>"
-   ```
-
-3. **Access the Application**:
-   - Once deployed, access your application securely at the public IP or DNS name of the Application Gateway.
-
-#### Notes
-- The Application Gateway listens on port 443 and forwards traffic to the ACI on port 8501.
-- SSL termination is handled by the Application Gateway using the provided SSL certificate.
-- Ensure that the SSL certificate is in PFX format and base64-encoded, and provide the password as a parameter.
+### Notes about the deployment
+- The container group will be deployed with 1 CPU core and 1GB of memory
+- Environment variables for Azure OpenAI (endpoint and API key) will be automatically configured
 
 ## GitHub Actions CI/CD
 
