@@ -67,14 +67,13 @@ resource containerGroup 'Microsoft.ContainerInstance/containerGroups@2023-05-01'
     ]
     osType: 'Linux'
     ipAddress: {
-      type: 'Public'
+      type: 'Private'
       ports: [
         {
           port: 8501
           protocol: 'TCP'
         }
       ]
-      dnsNameLabel: containerGroupName
     }
     imageRegistryCredentials: registryType == 'ACR' ? [
       {
