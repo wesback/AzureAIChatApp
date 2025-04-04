@@ -11,12 +11,6 @@ param azureOpenAIEndpoint string
 @secure()
 param azureOpenAIAPIKey string
 
-@description('Name of the Azure Container Registry')
-param acrName string = 'myContainerRegistry'
-
-@description('SKU of the Azure Container Registry')
-param acrSku string = 'Basic'
-
 @description('Registry type: DockerHub or ACR')
 param registryType string = 'DockerHub'
 
@@ -28,16 +22,8 @@ param registryUsername string = ''
 @secure()
 param registryPassword string = ''
 
-resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' = {
-  name: acrName
-  location: resourceGroup().location
-  sku: {
-    name: acrSku
-  }
-  properties: {
-    adminUserEnabled: true
-  }
-}
+@description('ACR registry name (required for ACR, without .azurecr.io)')
+param registryName string = ''
 
 resource containerGroup 'Microsoft.ContainerInstance/containerGroups@2023-05-01' = {
   name: containerGroupName
@@ -86,7 +72,7 @@ resource containerGroup 'Microsoft.ContainerInstance/containerGroups@2023-05-01'
     }
     imageRegistryCredentials: registryType == 'ACR' ? [
       {
-        server: containerRegistry.properties.loginServer
+        server: '${registryName}.azurecr.io'
         username: registryUsername
         password: registryPassword
       }
@@ -95,4 +81,3 @@ resource containerGroup 'Microsoft.ContainerInstance/containerGroups@2023-05-01'
 }
 
 output fqdn string = containerGroup.properties.ipAddress.fqdn
-output acrLoginServer string = containerRegistry.properties.loginServer
