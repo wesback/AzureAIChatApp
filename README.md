@@ -53,11 +53,7 @@ docker run -p 8501:8501 -e AZURE_OPENAI_ENDPOINT="<your-endpoint>" -e AZURE_OPEN
 
 3. **Access the application**:
 
-Open your browser and navigate to:
-
-```
-http://localhost:8501
-```
+For local development, use `http://localhost:8501` (HTTPS is not configured for localhost).
 
 ## Container Registry Setup and Deployment
 
@@ -132,10 +128,38 @@ You can get ACR credentials using:
 az acr credential show --name <your-acr-name>
 ```
 
-Once deployed, access your application at:
-```
-http://<your-container-group-name>.<region>.azurecontainer.io:8501
-```
+### Using Azure Application Gateway for SSL Termination
+
+To enable secure communication over HTTPS, this solution integrates with Azure Application Gateway. The Application Gateway handles SSL termination and proxies traffic to the Azure Container Instance (ACI) running on port 8501.
+
+#### Steps to Configure Azure Application Gateway
+
+1. **Update Parameters**:
+   - Add the following parameters to your deployment command:
+     - `applicationGatewayName`: The name of the Azure Application Gateway resource.
+     - `publicIpName`: The name of the public IP resource for the Application Gateway.
+
+2. **Deploy with Application Gateway**:
+   ```bash
+   az deployment group create \
+     --resource-group <your-resource-group> \
+     --template-file infra/aci.bicep \
+     --parameters image="<your-image-path>" \
+                  azureOpenAIEndpoint="<your-endpoint>" \
+                  azureOpenAIAPIKey="<your-api-key>" \
+                  registryType="<DockerHub|ACR>" \
+                  registryName="<your-acr-name>" \
+                  applicationGatewayName="<your-app-gateway-name>" \
+                  publicIpName="<your-public-ip-name>"
+   ```
+
+3. **Access the Application**:
+   - Once deployed, access your application securely at the public IP or DNS name of the Application Gateway.
+
+#### Notes
+- The Application Gateway listens on port 443 and forwards traffic to the ACI on port 8501.
+- SSL termination is handled by the Application Gateway using the provided SSL certificate.
+- Ensure that the SSL certificate is in PFX format and base64-encoded, and provide the password as a parameter.
 
 ## GitHub Actions CI/CD
 
