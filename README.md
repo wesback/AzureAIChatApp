@@ -45,6 +45,82 @@ Open your browser and navigate to:
 http://localhost:8501
 ```
 
+## Pushing to Container Registries
+
+### Pushing to DockerHub
+
+1. **Log in to DockerHub**:
+
+```bash
+docker login
+```
+
+2. **Tag your image with your DockerHub username**:
+
+```bash
+docker tag azure-ai-chat-app <your-dockerhub-username>/azure-ai-chat-app:latest
+```
+
+3. **Push the image to DockerHub**:
+
+```bash
+docker push <your-dockerhub-username>/azure-ai-chat-app:latest
+```
+
+### Pushing to Azure Container Registry (ACR)
+
+1. **Create a resource group (if not already created)**:
+
+```bash
+az group create --name <your-resource-group> --location <your-location>
+```
+
+2. **Create an Azure Container Registry (if not already created)**:
+
+```bash
+az acr create --resource-group <your-resource-group> --name <your-acr-name> --sku Basic
+```
+
+3. **Log in to your ACR**:
+
+```bash
+az acr login --name <your-acr-name>
+```
+
+4. **Tag your image with the ACR login server name**:
+
+```bash
+docker tag azure-ai-chat-app <your-acr-name>.azurecr.io/azure-ai-chat-app:latest
+```
+
+5. **Push the image to ACR**:
+
+```bash
+docker push <your-acr-name>.azurecr.io/azure-ai-chat-app:latest
+```
+
+6. **Use the ACR image in your deployment**:
+
+When deploying to ACI using the Bicep template, use the full image path:
+
+```bash
+az deployment group create \
+  --resource-group <your-resource-group> \
+  --template-file infra/aci.bicep \
+  --parameters image="<your-acr-name>.azurecr.io/azure-ai-chat-app:latest" azureOpenAIEndpoint="<your-endpoint>" azureOpenAIAPIKey="<your-api-key>"
+```
+
+> Note: If your ACR has private access, you'll need to provide credentials for ACI to pull the image. Add the following parameters to your deployment command:
+
+```bash
+--parameters registryServer="<your-acr-name>.azurecr.io" registryUsername="<registry-username>" registryPassword="<registry-password>"
+```
+
+You can get the credentials using:
+```bash
+az acr credential show --name <your-acr-name>
+```
+
 ## Deploying to Azure Container Instances (ACI)
 
 1. **Log in to Azure CLI**:
@@ -70,6 +146,20 @@ az deployment group create \
 
 Replace placeholders (`<your-resource-group>`, `<your-location>`, `<your-docker-image>`, `<your-endpoint>`, `<your-api-key>`) with your actual values.
 
+If using an image from a private ACR, add registry credentials to your deployment:
+
+```bash
+az deployment group create \
+  --resource-group <your-resource-group> \
+  --template-file infra/aci.bicep \
+  --parameters image="<your-acr-name>.azurecr.io/azure-ai-chat-app:latest" \
+               azureOpenAIEndpoint="<your-endpoint>" \
+               azureOpenAIAPIKey="<your-api-key>" \
+               registryServer="<your-acr-name>.azurecr.io" \
+               registryUsername="<registry-username>" \
+               registryPassword="<registry-password>"
+```
+
 4. **Access the deployed application**:
 
 After deployment, the fully qualified domain name (FQDN) will be displayed. Access your application at:
@@ -84,3 +174,5 @@ http://<your-container-group-name>.<region>.azurecontainer.io:8501
 > Create a README file for Github using Markup. Please add documentation about the project, also add instructions on how to build the docker file and run it locally next to the instructions on how to run this to Azure Container Instances. Feel free to add this prompt to the readme too.
 
 > Create a bicep and a terraform file to deploy the Azure Container Intances.
+
+> Can you add a Github Action to the project to build the docker container and push it to either Docker Hub or and Azure Container Registry? I assume you will need some secrets in the Github Action to make that work. Can you add the necessary steps to make sure this Github Action is only triggered on the main branch and that only I can merge changes into the main branch to prevent abuse?
