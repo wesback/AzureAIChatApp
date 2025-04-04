@@ -17,6 +17,17 @@ param acrName string = 'myContainerRegistry'
 @description('SKU of the Azure Container Registry')
 param acrSku string = 'Basic'
 
+@description('Registry type: DockerHub or ACR')
+param registryType string = 'DockerHub'
+
+@description('Registry username (required for ACR)')
+@secure()
+param registryUsername string = ''
+
+@description('Registry password (required for ACR)')
+@secure()
+param registryPassword string = ''
+
 resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' = {
   name: acrName
   location: resourceGroup().location
@@ -73,6 +84,13 @@ resource containerGroup 'Microsoft.ContainerInstance/containerGroups@2023-05-01'
       ]
       dnsNameLabel: containerGroupName
     }
+    imageRegistryCredentials: registryType == 'ACR' ? [
+      {
+        server: containerRegistry.properties.loginServer
+        username: registryUsername
+        password: registryPassword
+      }
+    ] : []
   }
 }
 

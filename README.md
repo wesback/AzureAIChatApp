@@ -99,12 +99,17 @@ az deployment group create \
   --template-file infra/aci.bicep \
   --parameters image="<your-image-path>" \
                azureOpenAIEndpoint="<your-endpoint>" \
-               azureOpenAIAPIKey="<your-api-key>"
+               azureOpenAIAPIKey="<your-api-key>" \
+               registryType="<DockerHub|ACR>"
 ```
 
 Replace `<your-image-path>` with either:
 - DockerHub: `<your-dockerhub-username>/azure-ai-chat-app:latest`
 - ACR: `<your-acr-name>.azurecr.io/azure-ai-chat-app:latest`
+
+Set `registryType` to:
+- `DockerHub` for images hosted on Docker Hub.
+- `ACR` for images hosted on Azure Container Registry.
 
 If using ACR with private access, add registry credentials:
 
@@ -115,7 +120,7 @@ az deployment group create \
   --parameters image="<your-acr-name>.azurecr.io/azure-ai-chat-app:latest" \
                azureOpenAIEndpoint="<your-endpoint>" \
                azureOpenAIAPIKey="<your-api-key>" \
-               registryServer="<your-acr-name>.azurecr.io" \
+               registryType="ACR" \
                registryUsername="<registry-username>" \
                registryPassword="<registry-password>"
 ```
