@@ -4,13 +4,14 @@
 
 This project provides a Streamlit-based chat interface integrated with Azure OpenAI services. It allows users to interact with various Azure AI models, upload context files (text, PDF, images), and receive AI-generated responses.
 
-I still need to add a way to host the application over HTTPS.
+The application can be hosted securely over HTTPS using Azure Container Apps.
 
 ## Features
 
 - Interactive chat interface powered by Streamlit.
 - Integration with Azure OpenAI models (GPT-3.5 Turbo, GPT-4o, Deepseek-R1, O3 Mini).
 - Supports uploading context files (text, PDF, images) for enhanced interactions.
+- Secure HTTPS hosting via Azure Container Apps.
 
 ## Prerequisites
 
@@ -63,7 +64,7 @@ You can push the image to either Docker Hub or Azure Container Registry (ACR). C
 
 ### Option 1: Using Docker Hub
 
-1. **Log in and push to DockerHub**:
+1. **Log in and push to Docker Hub**:
 
 ```bash
 docker login
@@ -87,13 +88,15 @@ docker tag azureaichatapp <your-acr-name>.azurecr.io/azureaichatapp:latest
 docker push <your-acr-name>.azurecr.io/azureaichatapp:latest
 ```
 
-## Deploying to Azure Container Instances (ACI)
+## Deploying to Azure Container Apps
+
+Deploy the application securely over HTTPS using Azure Container Apps:
 
 ```bash
 az deployment group create \
   --resource-group <your-resource-group> \
-  --template-file infra/aci.bicep \
-  --parameters containerGroupName="azure-ai-chat-app" \
+  --template-file infra/container-app.bicep \
+  --parameters containerAppName="azure-ai-chat-app" \
                image="<your-image-path>" \
                azureOpenAIEndpoint="<your-endpoint>" \
                azureOpenAIAPIKey="<your-api-key>" \
@@ -101,7 +104,7 @@ az deployment group create \
 ```
 
 Replace `<your-image-path>` with either:
-- DockerHub: `<your-dockerhub-username>/azureaichatapp:latest`
+- Docker Hub: `<your-dockerhub-username>/azureaichatapp:latest`
 - ACR: `<your-acr-name>.azurecr.io/azureaichatapp:latest`
 
 If using Azure Container Registry (ACR), add these additional parameters:
@@ -118,44 +121,45 @@ az acr credential show --name <your-acr-name>
 ```
 
 ### Notes about the deployment
-- The container group will be deployed with 1 CPU core and 1GB of memory
-- Environment variables for Azure OpenAI (endpoint and API key) will be automatically configured
+- The container app will be deployed with 1 CPU core and 2GB of memory.
+- Environment variables for Azure OpenAI (endpoint and API key) will be automatically configured.
+- The application will be accessible securely over HTTPS.
 
 ## GitHub Actions CI/CD
 
 This repository includes GitHub Actions workflow for automated container builds and deployments. The workflow:
-- Triggers only on pushes to the main branch
-- Builds the Docker image
-- Pushes to either Docker Hub or Azure Container Registry (or both if configured)
+- Triggers only on pushes to the main branch.
+- Builds the Docker image.
+- Pushes to either Docker Hub or Azure Container Registry (or both if configured).
 
 ### Required GitHub Secrets
 
 Set up the following secrets in your GitHub repository settings:
 
 For Docker Hub:
-- `DOCKER_USERNAME`: Your Docker Hub username
-- `DOCKER_PASSWORD`: Your Docker Hub access token
+- `DOCKER_USERNAME`: Your Docker Hub username.
+- `DOCKER_PASSWORD`: Your Docker Hub access token.
 
 For Azure Container Registry:
-- `AZURE_REGISTRY_URL`: Your ACR login server (e.g., `myregistry.azurecr.io`)
-- `AZURE_REGISTRY_USERNAME`: ACR username
-- `AZURE_REGISTRY_PASSWORD`: ACR password
+- `AZURE_REGISTRY_URL`: Your ACR login server (e.g., `myregistry.azurecr.io`).
+- `AZURE_REGISTRY_USERNAME`: ACR username.
+- `AZURE_REGISTRY_PASSWORD`: ACR password.
 
 ### Branch Protection
 
 To ensure only authorized changes reach the main branch:
-1. Go to Repository Settings > Branches
-2. Add branch protection rule for `main`
+1. Go to Repository Settings > Branches.
+2. Add branch protection rule for `main`.
 3. Enable:
-   - Require pull request reviews
-   - Require status checks to pass
-   - Restrict who can push to matching branches
+   - Require pull request reviews.
+   - Require status checks to pass.
+   - Restrict who can push to matching branches.
 
 ## Original Prompts
 > Create a Python web app using Streamlit that allows me to call an Azure AI Foundry Endpoint to chat with. I want the user to be able to select a model (listed in a parameter in the app to make sure the developer has a choice which models are allowed). Provide the ability to upload a text file, PDF or image for context in the chat. The endpoint and API key should be configurable using an environment variable but also provide an input option in the web app itself so it can be changed at runtime.
 
-> Create a README file for Github using Markup. Please add documentation about the project, also add instructions on how to build the docker file and run it locally next to the instructions on how to run this to Azure Container Instances. Feel free to add this prompt to the readme too.
+> Create a README file for GitHub using MarkDown that includes instructions on how to build the Docker file and run it locally, instructions on how to deploy this to Azure Container Instances, and Azure Container Apps. Feel free to add this prompt to the README too.
 
-> Create a bicep and a terraform file to deploy the Azure Container Intances.
+> Create a Bicep and a Terraform file to deploy the Azure Container Instances.
 
-> Can you add a Github Action to the project to build the docker container and push it to either Docker Hub or and Azure Container Registry? I assume you will need some secrets in the Github Action to make that work. Can you add the necessary steps to make sure this Github Action is only triggered on the main branch and that only I can merge changes into the main branch to prevent abuse?
+> Can you add a GitHub Action to automate container builds and deployments, and ensure the main branch is protected to prevent abuse?

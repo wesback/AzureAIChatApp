@@ -1,12 +1,3 @@
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 3.0"
-    }
-  }
-}
-
 provider "azurerm" {
   features {}
 }
@@ -16,44 +7,78 @@ resource "azurerm_resource_group" "rg" {
   location = "<your-region>"
 }
 
-resource "azurerm_container_group" "chat_app" {
-  name                = "azure-ai-chat-app"
+resource "azurerm_log_analytics_workspace" "logs" {
+  name                = "${azurerm_resource_group.rg.name}-logs"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
-  ip_address_type     = "Public"
-  dns_name_label      = "azure-ai-chat-app-unique"
-  os_type             = "Linux"
+  sku                 = "PerGB2018"
+}
 
-  container {
-    name   = "azure-ai-chat-app"
-    image  = "<your-image-name>"
-    cpu    = "1"
-    memory = "1.5"
+resource "azurerm_container_app_environment" "env" {
+  name                       = "azure-ai-chat-env"
+  location                   = azurerm_resource_group.rg.location
+  resource_group_name        = azurerm_resource_group.rg.name
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.logs.id
+}
 
-    ports {
-      port     = 8501
-      protocol = "TCP"
+resource "azurerm_container_app" "chat_app" {
+  name                         = "azure-ai-chat-app"
+  resource_group_name          = azurerm_resource_group.rg.name
+  container_app_environment_id = azurerm_container_app_environment.chat_env.id
+  revision_mode                = "Single"
+
+  ingress {
+    external_enabled = true
+    target_port      = 8501
+    transport        = "http"
+    allow_insecure   = false
+  }
+
+  template {
+    container {
+      name  = "azure-ai-chat-app"
+      image = "<your-image-name>"
+      cpu   = 1
+      memory = "2Gi"
+
+      env {
+        name  = "AZURE_OPENAI_ENDPOINT"
+        value = "<your-azure-endpoint>"
+      }
+
+      env {
+        name  = "AZURE_OPENAI_API_KEY"
+        value = "<your-api-key>"
+      }
     }
 
-    environment_variables = {
-      AZURE_OPENAI_ENDPOINT = "<your-azure-endpoint>"
-      AZURE_OPENAI_API_KEY  = "<your-api-key>"
-    }
+    min_replicas = 1
+    max_replicas = 1
+  }
+
+  ingress {
+    external_enabled = true
+    target_port      = 8501
+    transport        = "http"
+  }
+
+  resource_group_name        = azurerm_resource_group.rg.name
+  container_app_environment_id = azurerm_container_app_environment.chat_env.id
+
+  registry {
+    server   = "<your-registry-server>" # e.g., Docker Hub or ACR login server
+    username = "<registry-username>"     # optional, required for ACR
+    password = "<registry-password>"      # required if using ACR
   }
 }
 
-resource "azurerm_container_registry" "acr" {
-  name                = "mycontainerregistry"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-  sku                 = "Basic"
-  admin_enabled       = true
+resource "azurerm_container_app_environment" "chat_env" {
+  name                       = "azure-ai-chat-env"
+  location                   = azurerm_resource_group.rg.location
+  resource_group_name        = azurerm_resource_group.rg.name
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.logs.id
 }
 
 output "fqdn" {
-  value = azurerm_container_group.chat_app.fqdn
-}
-
-output "acr_login_server" {
-  value = azurerm_container_registry.acr.login_server
+  value = azurerm_container_app.chat_app.ingress[0].fqdn
 }
